@@ -1,0 +1,1301 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
+    <title>AI OTHELLO</title>
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=Fredoka:wght@400;500;600;700&display=swap');
+        
+        body {
+            font-family: "Fredoka", sans-serif;
+            margin: 0;
+            padding: 15px;
+            background: #faf8ef;
+            color: #776e65;
+            text-align: center;
+            min-height: 100vh;
+            user-select: none;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+
+        .container {
+            max-width: 600px;
+            margin: 0 auto;
+            width: 100%;
+        }
+
+        .heading {
+            font-size: 42px;
+            font-weight: 700;
+            margin: 0 0 15px 0;
+            color: #776e65;
+            text-shadow: 2px 2px 4px rgba(0,0,0,0.1);
+            letter-spacing: 2px;
+        }
+
+        .game-info {
+            display: flex;
+            justify-content: space-between;
+            margin: 15px 0;
+            gap: 12px;
+        }
+
+        .info-card {
+            background: #bbada0;
+            padding: 12px;
+            border-radius: 12px;
+            color: white;
+            font-weight: 600;
+            text-align: center;
+            flex: 1;
+            box-shadow: 0 4px 12px rgba(0,0,0,0.15);
+        }
+
+        .info-label {
+            font-size: 12px;
+            text-transform: uppercase;
+            margin-bottom: 6px;
+            opacity: 0.9;
+        }
+
+        .info-value {
+            font-size: 20px;
+            font-weight: 700;
+        }
+
+        .game-status {
+            background: #bbada0;
+            padding: 15px;
+            border-radius: 12px;
+            margin: 15px 0;
+            color: white;
+            font-weight: 600;
+            font-size: 16px;
+            box-shadow: 0 4px 12px rgba(0,0,0,0.15);
+            transition: all 0.3s ease;
+            min-height: 24px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+
+        .game-status.ai-thinking {
+            background: linear-gradient(135deg, #8f7a66, #9f8977);
+            animation: thinking 1.5s ease-in-out infinite;
+        }
+
+        .game-status.human-turn {
+            background: linear-gradient(135deg, #2c3e50, #34495e);
+        }
+
+        @keyframes thinking {
+            0%, 100% { opacity: 0.8; transform: scale(1); }
+            50% { opacity: 1; transform: scale(1.02); }
+        }
+
+        .game-board {
+            background: #bbada0;
+            border-radius: 16px;
+            padding: 15px;
+            margin: 15px 0;
+            box-shadow: 0 8px 25px rgba(0,0,0,0.15);
+            display: inline-block;
+        }
+
+        .board {
+            display: grid;
+            grid-template-columns: repeat(8, 1fr);
+            gap: 2px;
+            background: #8f7a66;
+            padding: 12px;
+            border-radius: 12px;
+        }
+
+        .cell {
+            width: 45px;
+            height: 45px;
+            background: #2d5016;
+            border-radius: 8px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            cursor: pointer;
+            position: relative;
+            transition: all 0.2s ease;
+            box-shadow: inset 0 2px 4px rgba(0,0,0,0.2);
+        }
+
+        .cell:hover {
+            background: #3a6b1c;
+            transform: scale(1.05);
+        }
+
+        .cell.valid-move {
+            background: #4a7c59;
+            box-shadow: 0 0 10px rgba(106, 168, 79, 0.6);
+            animation: validPulse 1.5s ease-in-out infinite;
+        }
+
+        .cell.valid-move:hover {
+            background: #5d9b69;
+        }
+
+        .cell.corner {
+            background: #4a4a4a;
+        }
+
+        .cell.edge {
+            background: #3a3a3a;
+        }
+
+        @keyframes validPulse {
+            0%, 100% { box-shadow: 0 0 10px rgba(106, 168, 79, 0.6); }
+            50% { box-shadow: 0 0 20px rgba(106, 168, 79, 1); }
+        }
+
+        .stone {
+            width: 36px;
+            height: 36px;
+            border-radius: 50%;
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            transition: all 0.4s cubic-bezier(0.68, -0.55, 0.265, 1.55);
+            box-shadow: 0 3px 8px rgba(0,0,0,0.3);
+        }
+
+        .stone.black {
+            background: radial-gradient(circle at 30% 30%, #2c3e50, #1a252f);
+            border: 2px solid #34495e;
+        }
+
+        .stone.white {
+            background: radial-gradient(circle at 30% 30%, #ecf0f1, #bdc3c7);
+            border: 2px solid #95a5a6;
+        }
+
+        .stone.placing {
+            animation: placePiece 0.5s cubic-bezier(0.68, -0.55, 0.265, 1.55);
+        }
+
+        .stone.flipping {
+            animation: flipPiece 0.6s cubic-bezier(0.68, -0.55, 0.265, 1.55);
+        }
+
+        @keyframes placePiece {
+            0% {
+                transform: translate(-50%, -50%) scale(0) rotate(180deg);
+                opacity: 0;
+            }
+            50% {
+                transform: translate(-50%, -50%) scale(1.2) rotate(90deg);
+            }
+            100% {
+                transform: translate(-50%, -50%) scale(1) rotate(0deg);
+                opacity: 1;
+            }
+        }
+
+        @keyframes flipPiece {
+            0% { transform: translate(-50%, -50%) rotateY(0deg) scale(1); }
+            50% { transform: translate(-50%, -50%) rotateY(90deg) scale(1.1); }
+            100% { transform: translate(-50%, -50%) rotateY(180deg) scale(1); }
+        }
+
+        .controls {
+            display: flex;
+            gap: 15px;
+            justify-content: center;
+            margin: 20px 0;
+            flex-wrap: wrap;
+        }
+
+        .btn {
+            background: linear-gradient(135deg, #8f7a66, #9f8977);
+            border: none;
+            color: #f9f6f2;
+            padding: 15px 30px;
+            border-radius: 12px;
+            font-size: 16px;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.2s ease;
+            font-family: inherit;
+            box-shadow: 0 4px 12px rgba(0,0,0,0.15);
+            flex: 1;
+            min-width: 120px;
+        }
+
+        .btn:hover {
+            transform: translateY(-3px);
+            box-shadow: 0 8px 20px rgba(0,0,0,0.25);
+        }
+
+        .btn.new-game {
+            background: linear-gradient(135deg, #edcf72, #edc850);
+            color: #776e65;
+        }
+
+        .btn.pass {
+            background: linear-gradient(135deg, #f39c12, #e67e22);
+            display: none;
+        }
+
+        .game-message {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: rgba(0, 0, 0, 0.8);
+            display: none;
+            align-items: center;
+            justify-content: center;
+            z-index: 1000;
+        }
+
+        .message-content {
+            background: white;
+            padding: 30px;
+            border-radius: 20px;
+            text-align: center;
+            box-shadow: 0 20px 60px rgba(0,0,0,0.3);
+            max-width: 350px;
+            width: 90%;
+        }
+
+        .message-content h2 {
+            font-size: 28px;
+            margin: 0 0 15px 0;
+            color: #776e65;
+        }
+
+        .message-content p {
+            font-size: 16px;
+            margin-bottom: 25px;
+            color: #8f7a66;
+            line-height: 1.4;
+        }
+
+        .message-content button {
+            background: linear-gradient(135deg, #2c3e50, #34495e);
+            color: white;
+            border: none;
+            padding: 12px 25px;
+            border-radius: 12px;
+            font-size: 16px;
+            font-weight: 600;
+            cursor: pointer;
+            font-family: inherit;
+        }
+
+        /* モバイル対応 */
+        @media (max-width: 520px) {
+            .container {
+                margin: 0 5px;
+            }
+            
+            .heading {
+                font-size: 32px;
+                margin-bottom: 10px;
+            }
+            
+            .cell {
+                width: 38px;
+                height: 38px;
+            }
+            
+            .stone {
+                width: 30px;
+                height: 30px;
+            }
+            
+            .game-board {
+                padding: 12px;
+            }
+            
+            .board {
+                gap: 2px;
+                padding: 10px;
+            }
+
+            .info-value {
+                font-size: 18px;
+            }
+
+            .info-label {
+                font-size: 11px;
+            }
+
+            .controls {
+                gap: 10px;
+            }
+
+            .btn {
+                padding: 12px 20px;
+                font-size: 14px;
+                min-width: 100px;
+            }
+
+            .game-status {
+                font-size: 14px;
+                padding: 12px;
+            }
+        }
+
+        @media (max-width: 400px) {
+            .cell {
+                width: 32px;
+                height: 32px;
+            }
+            
+            .stone {
+                width: 26px;
+                height: 26px;
+            }
+
+            .heading {
+                font-size: 28px;
+            }
+
+            .game-info {
+                gap: 8px;
+            }
+
+            .info-card {
+                padding: 10px;
+            }
+
+            .info-value {
+                font-size: 16px;
+            }
+
+            .btn {
+                padding: 10px 15px;
+                font-size: 13px;
+                min-width: 80px;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1 class="heading">AI OTHELLO</h1>
+
+        <div class="game-info">
+            <div class="info-card">
+                <div class="info-label">あなた ⚫</div>
+                <div class="info-value" id="human-score">2</div>
+            </div>
+            <div class="info-card">
+                <div class="info-label">AI ⚪</div>
+                <div class="info-value" id="ai-score">2</div>
+            </div>
+            <div class="info-card">
+                <div class="info-label">勝利数</div>
+                <div class="info-value" id="wins">0</div>
+            </div>
+        </div>
+
+        <div class="game-status human-turn" id="game-status">
+            ⚫ あなたの番です
+        </div>
+
+        <div class="game-board">
+            <div class="board" id="board">
+                <!-- ボードは動的に生成 -->
+            </div>
+        </div>
+
+        <div class="controls">
+            <button class="btn pass" id="pass-btn" onclick="passMove()">パス</button>
+            <button class="btn new-game" onclick="newGame()">新しいゲーム</button>
+            <button class="btn" onclick="resetStats()">記録リセット</button>
+        </div>
+    </div>
+
+    <!-- ゲーム終了メッセージ -->
+    <div class="game-message" id="game-message">
+        <div class="message-content">
+            <h2 id="message-title">ゲーム終了</h2>
+            <p id="message-text">お疲れさまでした！</p>
+            <button onclick="hideMessage()">続ける</button>
+        </div>
+    </div>
+
+    <script>
+        // 効果音システム
+        const SoundSystem = {
+            context: null,
+            
+            init() {
+                try {
+                    this.context = new (window.AudioContext || window.webkitAudioContext)();
+                } catch (e) {
+                    console.log('Audio not supported');
+                }
+            },
+
+            playTone(frequency, duration, type = 'sine', volume = 0.3) {
+                if (!this.context) return;
+                
+                const oscillator = this.context.createOscillator();
+                const gainNode = this.context.createGain();
+                
+                oscillator.connect(gainNode);
+                gainNode.connect(this.context.destination);
+                
+                oscillator.frequency.setValueAtTime(frequency, this.context.currentTime);
+                oscillator.type = type;
+                
+                gainNode.gain.setValueAtTime(0, this.context.currentTime);
+                gainNode.gain.linearRampToValueAtTime(volume, this.context.currentTime + 0.01);
+                gainNode.gain.exponentialRampToValueAtTime(0.001, this.context.currentTime + duration);
+                
+                oscillator.start(this.context.currentTime);
+                oscillator.stop(this.context.currentTime + duration);
+            },
+
+            place() { this.playTone(800, 0.1, 'sine', 0.25); },
+            flip() { this.playTone(600, 0.15, 'triangle', 0.2); },
+            win() {
+                this.playTone(523, 0.2, 'sine', 0.4);
+                setTimeout(() => this.playTone(659, 0.2, 'sine', 0.4), 200);
+                setTimeout(() => this.playTone(784, 0.3, 'sine', 0.4), 400);
+            },
+            lose() {
+                this.playTone(330, 0.3, 'sine', 0.3);
+                setTimeout(() => this.playTone(294, 0.3, 'sine', 0.3), 150);
+                setTimeout(() => this.playTone(262, 0.5, 'sine', 0.3), 300);
+            }
+        };
+
+        // ゲーム定数
+        const EMPTY = 0;
+        const HUMAN = 1;
+        const AI = 2;
+
+        // 方向定義（8方向）
+        const directions = [
+            [-1, -1], [-1, 0], [-1, 1],
+            [0, -1],           [0, 1],
+            [1, -1],  [1, 0],  [1, 1]
+        ];
+
+        // ゲーム状態
+        let board = [];
+        let currentPlayer = HUMAN;
+        let gameActive = true;
+        let wins = parseInt(localStorage.getItem('ultimateOthelloWins')) || 0;
+        let transpositionTable = new Map();
+        let nodesEvaluated = 0;
+        let gamePhase = '';
+        let bestMove = null;
+        let bestScore = 0;
+
+        // 究極の位置評価テーブル
+        const ultimatePositionValues = [
+            [1000, -300,  100,   80,   80,  100, -300, 1000],
+            [-300, -500,  -50,  -50,  -50,  -50, -500, -300],
+            [ 100,  -50,   50,   10,   10,   50,  -50,  100],
+            [  80,  -50,   10,    5,    5,   10,  -50,   80],
+            [  80,  -50,   10,    5,    5,   10,  -50,   80],
+            [ 100,  -50,   50,   10,   10,   50,  -50,  100],
+            [-300, -500,  -50,  -50,  -50,  -50, -500, -300],
+            [1000, -300,  100,   80,   80,  100, -300, 1000]
+        ];
+
+        // エッジとコーナーの定義
+        const corners = [[0,0], [0,7], [7,0], [7,7]];
+        const edges = [];
+        for (let i = 0; i < 8; i++) {
+            edges.push([0, i], [7, i], [i, 0], [i, 7]);
+        }
+
+        // 危険なX位置（コーナー隣接）
+        const xSquares = [[1,1], [1,6], [6,1], [6,6]];
+
+        // 思考プロセステキスト
+        const thinkingMessages = [
+            (data) => `盤面を見渡し中...石は${data.totalStones}個、空きマスは${data.emptyCount}個`,
+            (data) => `${data.gamePhase}戦に入りました`,
+            (data) => `打てる場所は${data.validMoves}ヶ所見つかりました`,
+            (data) => `${data.depth}手先まで読んで最善手を探します`,
+            (data) => data.strategy,
+            (data) => `良い場所順に並べ替え中...`,
+            (data) => `危険な位置は避けます`,
+            (data) => `${data.nodesEvaluated.toLocaleString()}通りの可能性を検討中...`,
+            (data) => `最善手の計算完了`,
+            (data) => `${data.bestMoveText}が一番良さそう（有利度${data.bestScore > 0 ? '+' : ''}${data.bestScore}）`,
+            (data) => `計算完了！${data.nodesEvaluated.toLocaleString()}通りチェックしました`,
+            (data) => `${data.bestMoveText}に決めました！`,
+        ];
+
+        // 初期化
+        function init() {
+            SoundSystem.init();
+            createBoard();
+            newGame();
+            updateWins();
+        }
+
+        // ボード作成
+        function createBoard() {
+            const boardElement = document.getElementById('board');
+            boardElement.innerHTML = '';
+            board = Array(8).fill().map(() => Array(8).fill(EMPTY));
+            
+            for (let row = 0; row < 8; row++) {
+                for (let col = 0; col < 8; col++) {
+                    const cell = document.createElement('div');
+                    cell.className = 'cell';
+                    
+                    // 特別な位置のスタイル
+                    if (corners.some(([r, c]) => r === row && c === col)) {
+                        cell.classList.add('corner');
+                    } else if (edges.some(([r, c]) => r === row && c === col)) {
+                        cell.classList.add('edge');
+                    }
+                    
+                    cell.dataset.row = row;
+                    cell.dataset.col = col;
+                    cell.addEventListener('click', () => makeMove(row, col));
+                    boardElement.appendChild(cell);
+                }
+            }
+        }
+
+        // 新しいゲーム
+        function newGame() {
+            board = Array(8).fill().map(() => Array(8).fill(EMPTY));
+            currentPlayer = HUMAN;
+            gameActive = true;
+            transpositionTable.clear();
+            
+            // 初期配置
+            board[3][3] = AI;
+            board[3][4] = HUMAN;
+            board[4][3] = HUMAN;
+            board[4][4] = AI;
+            
+            updateDisplay();
+            updateGameStatus();
+            document.getElementById('pass-btn').style.display = 'none';
+        }
+
+        // プレイヤーの手
+        function makeMove(row, col) {
+            if (!gameActive || currentPlayer !== HUMAN) return;
+            if (!isValidMove(row, col, HUMAN)) return;
+            
+            executeMove(row, col, HUMAN);
+            SoundSystem.place();
+            
+            setTimeout(() => {
+                if (gameActive) {
+                    currentPlayer = AI;
+                    updateGameStatus();
+                    aiMove();
+                }
+            }, 800);
+        }
+
+        // 手を実行
+        function executeMove(row, col, player) {
+            board[row][col] = player;
+            const flips = getFlips(row, col, player);
+            
+            addStone(row, col, player);
+            
+            setTimeout(() => {
+                flips.forEach(([r, c], index) => {
+                    setTimeout(() => {
+                        board[r][c] = player;
+                        flipStone(r, c, player);
+                        SoundSystem.flip();
+                    }, index * 100);
+                });
+            }, 300);
+            
+            setTimeout(() => {
+                updateDisplay();
+                checkGameEnd();
+            }, 300 + flips.length * 100);
+        }
+
+        // AI の手
+        function aiMove() {
+            const validMoves = getValidMoves(AI);
+            
+            if (validMoves.length === 0) {
+                currentPlayer = HUMAN;
+                updateGameStatus();
+                
+                if (getValidMoves(HUMAN).length === 0) {
+                    endGame();
+                }
+                return;
+            }
+            
+            // 先にAI計算を実行
+            calculateBestMove();
+            
+            // 思考プロセスを段階的に表示
+            showThinkingProcess();
+        }
+
+        // 最適手計算
+        function calculateBestMove() {
+            gamePhase = getGamePhase();
+            const depth = getOptimalDepth();
+            nodesEvaluated = 0;
+            
+            let bestScore = -Infinity;
+            bestMove = null;
+            const validMoves = getValidMoves(AI);
+            
+            const sortedMoves = sortMovesByPriority(validMoves, AI);
+            
+            for (const [row, col] of sortedMoves) {
+                const boardCopy = copyBoard();
+                const flips = getFlips(row, col, AI);
+                
+                boardCopy[row][col] = AI;
+                flips.forEach(([r, c]) => boardCopy[r][c] = AI);
+                
+                const score = ultimateMinimax(boardCopy, depth - 1, -Infinity, Infinity, false);
+                
+                if (score > bestScore) {
+                    bestScore = score;
+                    bestMove = [row, col];
+                }
+            }
+        }
+
+        // 思考プロセス表示
+        function showThinkingProcess() {
+            const statusElement = document.getElementById('game-status');
+            statusElement.className = 'game-status ai-thinking';
+            
+            const data = {
+                totalStones: countTotalStones(),
+                emptyCount: countEmpty(),
+                gamePhase: gamePhase === '序盤' ? '序盤' : gamePhase === '終盤' ? '終盤' : '中盤',
+                validMoves: getValidMoves(AI).length,
+                depth: getOptimalDepth(),
+                strategy: getStrategyText(),
+                nodesEvaluated: nodesEvaluated,
+                bestScore: bestScore,
+                bestMoveText: getMoveText(bestMove[0], bestMove[1])
+            };
+            
+            let messageIndex = 0;
+            
+            function showNextMessage() {
+                if (messageIndex < thinkingMessages.length) {
+                    const message = thinkingMessages[messageIndex](data);
+                    statusElement.textContent = `🤖 ${message}`;
+                    messageIndex++;
+                    
+                    const delay = messageIndex <= 3 ? 800 : 
+                                 messageIndex <= 6 ? 1000 : 
+                                 messageIndex <= 9 ? 1200 : 800;
+                    
+                    setTimeout(showNextMessage, delay);
+                } else {
+                    // AI手を実行
+                    executeMove(bestMove[0], bestMove[1], AI);
+                    SoundSystem.place();
+                    
+                    setTimeout(() => {
+                        if (gameActive) {
+                            currentPlayer = HUMAN;
+                            updateGameStatus();
+                        }
+                    }, 800);
+                }
+            }
+            
+            showNextMessage();
+        }
+
+        // 戦略テキスト取得
+        function getStrategyText() {
+            if (gamePhase === '序盤') {
+                return 'コーナーを狙う作戦で行きます';
+            } else if (gamePhase === '終盤') {
+                return '石数勝負に持ち込む作戦です';
+            } else {
+                return 'エッジ制御重視の作戦です';
+            }
+        }
+
+        // 手のテキスト取得
+        function getMoveText(row, col) {
+            const files = ['A', 'B', 'C', 'D', 'E', 'F', 'G', 'H'];
+            return `${files[col]}${row + 1}`;
+        }
+
+        // ゲーム段階判定
+        function getGamePhase() {
+            const totalStones = countTotalStones();
+            if (totalStones <= 20) return '序盤';
+            if (totalStones >= 50) return '終盤';
+            return '中盤';
+        }
+
+        // 最適深度取得
+        function getOptimalDepth() {
+            const emptyCount = countEmpty();
+            const gamePhase = getGamePhase();
+            
+            if (gamePhase === '終盤' && emptyCount <= 12) {
+                return Math.min(emptyCount, 10);
+            }
+            
+            return 8; // 固定深度
+        }
+
+        // 究極のミニマックス法
+        function ultimateMinimax(boardState, depth, alpha, beta, isMaximizing) {
+            nodesEvaluated++;
+            
+            if (depth === 0) {
+                return ultimateEvaluateBoard(boardState);
+            }
+            
+            const boardHash = getBoardHash(boardState);
+            const tableKey = `${boardHash}_${depth}_${isMaximizing}`;
+            if (transpositionTable.has(tableKey)) {
+                return transpositionTable.get(tableKey);
+            }
+            
+            const player = isMaximizing ? AI : HUMAN;
+            const validMoves = getValidMovesForBoard(boardState, player);
+            
+            if (validMoves.length === 0) {
+                const opponent = 3 - player;
+                const opponentMoves = getValidMovesForBoard(boardState, opponent);
+                if (opponentMoves.length === 0) {
+                    const result = ultimateEvaluateFinalBoard(boardState);
+                    transpositionTable.set(tableKey, result);
+                    return result;
+                }
+                const result = ultimateMinimax(boardState, depth - 1, alpha, beta, !isMaximizing);
+                transpositionTable.set(tableKey, result);
+                return result;
+            }
+            
+            const sortedMoves = sortMovesByPriority(validMoves, player);
+            
+            if (isMaximizing) {
+                let maxEval = -Infinity;
+                for (const [row, col] of sortedMoves) {
+                    const newBoard = copyBoard(boardState);
+                    const flips = getFlipsForBoard(newBoard, row, col, player);
+                    newBoard[row][col] = player;
+                    flips.forEach(([r, c]) => newBoard[r][c] = player);
+                    
+                    const eval = ultimateMinimax(newBoard, depth - 1, alpha, beta, false);
+                    maxEval = Math.max(maxEval, eval);
+                    alpha = Math.max(alpha, eval);
+                    
+                    if (beta <= alpha) break;
+                }
+                transpositionTable.set(tableKey, maxEval);
+                return maxEval;
+            } else {
+                let minEval = Infinity;
+                for (const [row, col] of sortedMoves) {
+                    const newBoard = copyBoard(boardState);
+                    const flips = getFlipsForBoard(newBoard, row, col, player);
+                    newBoard[row][col] = player;
+                    flips.forEach(([r, c]) => newBoard[r][c] = player);
+                    
+                    const eval = ultimateMinimax(newBoard, depth - 1, alpha, beta, true);
+                    minEval = Math.min(minEval, eval);
+                    beta = Math.min(beta, eval);
+                    
+                    if (beta <= alpha) break;
+                }
+                transpositionTable.set(tableKey, minEval);
+                return minEval;
+            }
+        }
+
+        // 究極のボード評価関数
+        function ultimateEvaluateBoard(boardState) {
+            let score = 0;
+            
+            score += evaluatePositions(boardState);
+            score += evaluateCorners(boardState) * 500;
+            score += evaluateEdges(boardState) * 100;
+            score += evaluateMobility(boardState);
+            score += evaluateStability(boardState) * 200;
+            
+            if (gamePhase === '序盤') {
+                score += evaluateOpeningStrategy(boardState);
+            } else if (gamePhase === '終盤') {
+                score += evaluateEndgameStrategy(boardState);
+            }
+            
+            if (gamePhase === '終盤') {
+                score += evaluateParity(boardState) * 50;
+            }
+            
+            return score;
+        }
+
+        // 評価関数群
+        function evaluatePositions(boardState) {
+            let score = 0;
+            for (let row = 0; row < 8; row++) {
+                for (let col = 0; col < 8; col++) {
+                    if (boardState[row][col] === AI) {
+                        score += ultimatePositionValues[row][col];
+                    } else if (boardState[row][col] === HUMAN) {
+                        score -= ultimatePositionValues[row][col];
+                    }
+                }
+            }
+            return score;
+        }
+
+        function evaluateCorners(boardState) {
+            let score = 0;
+            for (const [row, col] of corners) {
+                if (boardState[row][col] === AI) score += 1;
+                else if (boardState[row][col] === HUMAN) score -= 1;
+            }
+            return score;
+        }
+
+        function evaluateEdges(boardState) {
+            let score = 0;
+            for (const [row, col] of edges) {
+                if (boardState[row][col] === AI) score += 1;
+                else if (boardState[row][col] === HUMAN) score -= 1;
+            }
+            return score;
+        }
+
+        function evaluateMobility(boardState) {
+            const aiMoves = getValidMovesForBoard(boardState, AI).length;
+            const humanMoves = getValidMovesForBoard(boardState, HUMAN).length;
+            const mobilityWeight = gamePhase === '序盤' ? 50 : gamePhase === '中盤' ? 30 : 10;
+            return (aiMoves - humanMoves) * mobilityWeight;
+        }
+
+        function evaluateStability(boardState) {
+            let score = 0;
+            for (let row = 0; row < 8; row++) {
+                for (let col = 0; col < 8; col++) {
+                    if (boardState[row][col] !== EMPTY) {
+                        const stability = calculateStability(boardState, row, col);
+                        if (boardState[row][col] === AI) {
+                            score += stability;
+                        } else {
+                            score -= stability;
+                        }
+                    }
+                }
+            }
+            return score;
+        }
+
+        function calculateStability(boardState, row, col) {
+            const player = boardState[row][col];
+            if (player === EMPTY) return 0;
+            
+            if (corners.some(([r, c]) => r === row && c === col)) {
+                return 10;
+            }
+            
+            let stability = 0;
+            for (const [dr, dc] of directions) {
+                if (isDirectionStable(boardState, row, col, dr, dc, player)) {
+                    stability += 1;
+                }
+            }
+            return stability;
+        }
+
+        function isDirectionStable(boardState, row, col, dr, dc, player) {
+            let r1 = row + dr, c1 = col + dc;
+            let r2 = row - dr, c2 = col - dc;
+            let stable1 = false, stable2 = false;
+            
+            while (r1 >= 0 && r1 < 8 && c1 >= 0 && c1 < 8) {
+                if (boardState[r1][c1] === player) {
+                    if (corners.some(([r, c]) => r === r1 && c === c1)) {
+                        stable1 = true;
+                        break;
+                    }
+                } else {
+                    break;
+                }
+                r1 += dr;
+                c1 += dc;
+            }
+            
+            while (r2 >= 0 && r2 < 8 && c2 >= 0 && c2 < 8) {
+                if (boardState[r2][c2] === player) {
+                    if (corners.some(([r, c]) => r === r2 && c === c2)) {
+                        stable2 = true;
+                        break;
+                    }
+                } else {
+                    break;
+                }
+                r2 -= dr;
+                c2 -= dc;
+            }
+            
+            return stable1 || stable2;
+        }
+
+        function evaluateOpeningStrategy(boardState) {
+            let score = 0;
+            
+            for (const [row, col] of xSquares) {
+                if (boardState[row][col] === AI) score -= 200;
+                else if (boardState[row][col] === HUMAN) score += 200;
+            }
+            
+            const centerSquares = [[3,3], [3,4], [4,3], [4,4]];
+            for (const [row, col] of centerSquares) {
+                if (boardState[row][col] === AI) score += 20;
+                else if (boardState[row][col] === HUMAN) score -= 20;
+            }
+            
+            return score;
+        }
+
+        function evaluateEndgameStrategy(boardState) {
+            let aiStones = 0;
+            let humanStones = 0;
+            
+            for (let row = 0; row < 8; row++) {
+                for (let col = 0; col < 8; col++) {
+                    if (boardState[row][col] === AI) aiStones++;
+                    else if (boardState[row][col] === HUMAN) humanStones++;
+                }
+            }
+            
+            return (aiStones - humanStones) * 100;
+        }
+
+        function evaluateParity(boardState) {
+            const emptyCount = countEmpty(boardState);
+            return emptyCount % 2 === 0 ? 1 : -1;
+        }
+
+        function sortMovesByPriority(moves, player) {
+            return moves.sort((a, b) => {
+                const scoreA = getMoveScore(a, player);
+                const scoreB = getMoveScore(b, player);
+                return scoreB - scoreA;
+            });
+        }
+
+        function getMoveScore(move, player) {
+            const [row, col] = move;
+            let score = 0;
+            
+            score += ultimatePositionValues[row][col];
+            
+            if (corners.some(([r, c]) => r === row && c === col)) {
+                score += 10000;
+            }
+            
+            const flips = getFlipsForBoard(board, row, col, player);
+            score += flips.length * 10;
+            
+            return score;
+        }
+
+        // ユーティリティ関数
+        function countTotalStones() {
+            let count = 0;
+            for (let row = 0; row < 8; row++) {
+                for (let col = 0; col < 8; col++) {
+                    if (board[row][col] !== EMPTY) count++;
+                }
+            }
+            return count;
+        }
+
+        function countEmpty(boardState = board) {
+            let count = 0;
+            for (let row = 0; row < 8; row++) {
+                for (let col = 0; col < 8; col++) {
+                    if (boardState[row][col] === EMPTY) count++;
+                }
+            }
+            return count;
+        }
+
+        function getBoardHash(boardState) {
+            return boardState.flat().join('');
+        }
+
+        // 基本ゲーム関数
+        function isValidMove(row, col, player) {
+            if (board[row][col] !== EMPTY) return false;
+            return getFlips(row, col, player).length > 0;
+        }
+
+        function getFlips(row, col, player) {
+            const flips = [];
+            const opponent = 3 - player;
+            
+            for (const [dr, dc] of directions) {
+                const lineFlips = [];
+                let r = row + dr;
+                let c = col + dc;
+                
+                while (r >= 0 && r < 8 && c >= 0 && c < 8 && board[r][c] === opponent) {
+                    lineFlips.push([r, c]);
+                    r += dr;
+                    c += dc;
+                }
+                
+                if (r >= 0 && r < 8 && c >= 0 && c < 8 && board[r][c] === player && lineFlips.length > 0) {
+                    flips.push(...lineFlips);
+                }
+            }
+            
+            return flips;
+        }
+
+        function getValidMoves(player) {
+            const moves = [];
+            for (let row = 0; row < 8; row++) {
+                for (let col = 0; col < 8; col++) {
+                    if (isValidMove(row, col, player)) {
+                        moves.push([row, col]);
+                    }
+                }
+            }
+            return moves;
+        }
+
+        function getValidMovesForBoard(boardState, player) {
+            const moves = [];
+            for (let row = 0; row < 8; row++) {
+                for (let col = 0; col < 8; col++) {
+                    if (boardState[row][col] === EMPTY && getFlipsForBoard(boardState, row, col, player).length > 0) {
+                        moves.push([row, col]);
+                    }
+                }
+            }
+            return moves;
+        }
+
+        function getFlipsForBoard(boardState, row, col, player) {
+            const flips = [];
+            const opponent = 3 - player;
+            
+            for (const [dr, dc] of directions) {
+                const lineFlips = [];
+                let r = row + dr;
+                let c = col + dc;
+                
+                while (r >= 0 && r < 8 && c >= 0 && c < 8 && boardState[r][c] === opponent) {
+                    lineFlips.push([r, c]);
+                    r += dr;
+                    c += dc;
+                }
+                
+                if (r >= 0 && r < 8 && c >= 0 && c < 8 && boardState[r][c] === player && lineFlips.length > 0) {
+                    flips.push(...lineFlips);
+                }
+            }
+            
+            return flips;
+        }
+
+        function copyBoard(boardState = board) {
+            return boardState.map(row => [...row]);
+        }
+
+        function ultimateEvaluateFinalBoard(boardState) {
+            let aiStones = 0;
+            let humanStones = 0;
+            
+            for (let row = 0; row < 8; row++) {
+                for (let col = 0; col < 8; col++) {
+                    if (boardState[row][col] === AI) aiStones++;
+                    else if (boardState[row][col] === HUMAN) humanStones++;
+                }
+            }
+            
+            if (aiStones > humanStones) return 100000;
+            if (humanStones > aiStones) return -100000;
+            return 0;
+        }
+
+        // UI更新関数
+        function addStone(row, col, player) {
+            const cell = document.querySelector(`[data-row="${row}"][data-col="${col}"]`);
+            const stone = document.createElement('div');
+            stone.className = `stone ${player === HUMAN ? 'black' : 'white'} placing`;
+            cell.appendChild(stone);
+        }
+
+        function flipStone(row, col, player) {
+            const cell = document.querySelector(`[data-row="${row}"][data-col="${col}"]`);
+            const stone = cell.querySelector('.stone');
+            if (stone) {
+                stone.classList.add('flipping');
+                setTimeout(() => {
+                    stone.className = `stone ${player === HUMAN ? 'black' : 'white'}`;
+                }, 300);
+            }
+        }
+
+        function updateDisplay() {
+            document.querySelectorAll('.cell').forEach(cell => {
+                cell.innerHTML = '';
+                cell.classList.remove('valid-move');
+            });
+            
+            for (let row = 0; row < 8; row++) {
+                for (let col = 0; col < 8; col++) {
+                    const cell = document.querySelector(`[data-row="${row}"][data-col="${col}"]`);
+                    if (board[row][col] !== EMPTY) {
+                        const stone = document.createElement('div');
+                        stone.className = `stone ${board[row][col] === HUMAN ? 'black' : 'white'}`;
+                        cell.appendChild(stone);
+                    }
+                }
+            }
+            
+            if (currentPlayer === HUMAN && gameActive) {
+                const validMoves = getValidMoves(HUMAN);
+                validMoves.forEach(([row, col]) => {
+                    const cell = document.querySelector(`[data-row="${row}"][data-col="${col}"]`);
+                    cell.classList.add('valid-move');
+                });
+            }
+            
+            let humanStones = 0;
+            let aiStones = 0;
+            for (let row = 0; row < 8; row++) {
+                for (let col = 0; col < 8; col++) {
+                    if (board[row][col] === HUMAN) humanStones++;
+                    else if (board[row][col] === AI) aiStones++;
+                }
+            }
+            
+            document.getElementById('human-score').textContent = humanStones;
+            document.getElementById('ai-score').textContent = aiStones;
+        }
+
+        function updateGameStatus() {
+            const element = document.getElementById('game-status');
+            if (currentPlayer === HUMAN) {
+                element.textContent = '⚫ あなたの番です';
+                element.className = 'game-status human-turn';
+            } else {
+                element.textContent = '⚪ AIの番です';
+                element.className = 'game-status ai-thinking';
+            }
+        }
+
+        function updateWins() {
+            document.getElementById('wins').textContent = wins;
+        }
+
+        // ゲーム制御関数
+        function passMove() {
+            if (!gameActive || currentPlayer !== HUMAN) return;
+            
+            currentPlayer = AI;
+            updateGameStatus();
+            aiMove();
+        }
+
+        function checkGameEnd() {
+            const humanMoves = getValidMoves(HUMAN);
+            const aiMoves = getValidMoves(AI);
+            
+            if (humanMoves.length === 0 && aiMoves.length === 0) {
+                endGame();
+                return;
+            }
+            
+            if (humanMoves.length === 0) {
+                document.getElementById('pass-btn').style.display = 'inline-block';
+            } else {
+                document.getElementById('pass-btn').style.display = 'none';
+            }
+        }
+
+        function endGame() {
+            gameActive = false;
+            
+            let humanStones = 0;
+            let aiStones = 0;
+            
+            for (let row = 0; row < 8; row++) {
+                for (let col = 0; col < 8; col++) {
+                    if (board[row][col] === HUMAN) humanStones++;
+                    else if (board[row][col] === AI) aiStones++;
+                }
+            }
+            
+            let title, text;
+            if (humanStones > aiStones) {
+                title = '🏆 素晴らしい！あなたの勝利！';
+                text = `${humanStones} vs ${aiStones} であなたの勝ち！\n\n強力なAIに勝つなんて...\nあなたは天才です！`;
+                wins++;
+                localStorage.setItem('ultimateOthelloWins', wins);
+                SoundSystem.win();
+            } else if (aiStones > humanStones) {
+                title = '🤖 AIの勝利';
+                text = `${aiStones} vs ${humanStones} でAIの勝ち\n\n${nodesEvaluated.toLocaleString()}通りの可能性を\n分析されました...`;
+                SoundSystem.lose();
+            } else {
+                title = '🤝 引き分け！';
+                text = `${humanStones} vs ${aiStones} で引き分け\n\nAIと互角とは素晴らしい実力です！`;
+            }
+            
+            updateWins();
+            setTimeout(() => showMessage(title, text), 1000);
+        }
+
+        function resetStats() {
+            if (confirm('勝利記録をリセットしますか？')) {
+                wins = 0;
+                localStorage.removeItem('ultimateOthelloWins');
+                updateWins();
+            }
+        }
+
+        function showMessage(title, text) {
+            document.getElementById('message-title').textContent = title;
+            document.getElementById('message-text').textContent = text;
+            document.getElementById('game-message').style.display = 'flex';
+        }
+
+        function hideMessage() {
+            document.getElementById('game-message').style.display = 'none';
+        }
+
+        // タッチ対応
+        document.addEventListener('touchstart', function() {
+            if (SoundSystem.context && SoundSystem.context.state === 'suspended') {
+                SoundSystem.context.resume();
+            }
+        }, { once: true });
+
+        // ゲーム開始
+        init();
+    </script>
+</body>
+</html>
