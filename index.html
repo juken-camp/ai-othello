@@ -1,0 +1,962 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
+    <title>AI OTHELLO</title>
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=Fredoka:wght@400;500;600;700&display=swap');
+        
+        body {
+            font-family: "Fredoka", sans-serif;
+            margin: 0;
+            padding: 20px;
+            background: #faf8ef;
+            color: #776e65;
+            text-align: center;
+            min-height: 100vh;
+            user-select: none;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+
+        .container {
+            max-width: 600px;
+            margin: 0 auto;
+        }
+
+        .heading {
+            font-size: 48px;
+            font-weight: 700;
+            margin: 0 0 10px 0;
+            color: #776e65;
+            text-shadow: 2px 2px 4px rgba(0,0,0,0.1);
+            letter-spacing: 2px;
+        }
+
+        .subtitle {
+            font-size: 16px;
+            color: #8f7a66;
+            margin-bottom: 20px;
+            font-weight: 500;
+        }
+
+        .game-info {
+            display: flex;
+            justify-content: space-between;
+            margin: 20px 0;
+            gap: 15px;
+        }
+
+        .info-card {
+            background: #bbada0;
+            padding: 15px;
+            border-radius: 12px;
+            color: white;
+            font-weight: 600;
+            text-align: center;
+            flex: 1;
+            box-shadow: 0 4px 12px rgba(0,0,0,0.15);
+        }
+
+        .info-label {
+            font-size: 13px;
+            text-transform: uppercase;
+            margin-bottom: 8px;
+            opacity: 0.9;
+        }
+
+        .info-value {
+            font-size: 24px;
+            font-weight: 700;
+        }
+
+        .current-player {
+            background: linear-gradient(135deg, #2c3e50, #34495e);
+            padding: 15px;
+            border-radius: 12px;
+            margin: 20px 0;
+            color: white;
+            font-weight: 600;
+            font-size: 18px;
+            box-shadow: 0 4px 12px rgba(0,0,0,0.15);
+            transition: all 0.3s ease;
+        }
+
+        .current-player.ai-turn {
+            background: linear-gradient(135deg, #e74c3c, #c0392b);
+        }
+
+        .game-board {
+            background: #bbada0;
+            border-radius: 16px;
+            padding: 20px;
+            margin: 20px 0;
+            box-shadow: 0 8px 25px rgba(0,0,0,0.15);
+            display: inline-block;
+        }
+
+        .board {
+            display: grid;
+            grid-template-columns: repeat(8, 1fr);
+            gap: 3px;
+            background: #8f7a66;
+            padding: 15px;
+            border-radius: 12px;
+        }
+
+        .cell {
+            width: 50px;
+            height: 50px;
+            background: #2d5016;
+            border-radius: 8px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            cursor: pointer;
+            position: relative;
+            transition: all 0.2s ease;
+            box-shadow: inset 0 2px 4px rgba(0,0,0,0.2);
+        }
+
+        .cell:hover {
+            background: #3a6b1c;
+            transform: scale(1.05);
+        }
+
+        .cell.valid-move {
+            background: #4a7c59;
+            box-shadow: 0 0 10px rgba(106, 168, 79, 0.6);
+            animation: validPulse 1.5s ease-in-out infinite;
+        }
+
+        .cell.valid-move:hover {
+            background: #5d9b69;
+        }
+
+        @keyframes validPulse {
+            0%, 100% { box-shadow: 0 0 10px rgba(106, 168, 79, 0.6); }
+            50% { box-shadow: 0 0 20px rgba(106, 168, 79, 1); }
+        }
+
+        .stone {
+            width: 40px;
+            height: 40px;
+            border-radius: 50%;
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            transition: all 0.4s cubic-bezier(0.68, -0.55, 0.265, 1.55);
+            box-shadow: 0 3px 8px rgba(0,0,0,0.3);
+        }
+
+        .stone.black {
+            background: radial-gradient(circle at 30% 30%, #2c3e50, #1a252f);
+            border: 2px solid #34495e;
+        }
+
+        .stone.white {
+            background: radial-gradient(circle at 30% 30%, #ecf0f1, #bdc3c7);
+            border: 2px solid #95a5a6;
+        }
+
+        .stone.placing {
+            animation: placePiece 0.5s cubic-bezier(0.68, -0.55, 0.265, 1.55);
+        }
+
+        .stone.flipping {
+            animation: flipPiece 0.6s cubic-bezier(0.68, -0.55, 0.265, 1.55);
+        }
+
+        @keyframes placePiece {
+            0% {
+                transform: translate(-50%, -50%) scale(0) rotate(180deg);
+                opacity: 0;
+            }
+            50% {
+                transform: translate(-50%, -50%) scale(1.2) rotate(90deg);
+            }
+            100% {
+                transform: translate(-50%, -50%) scale(1) rotate(0deg);
+                opacity: 1;
+            }
+        }
+
+        @keyframes flipPiece {
+            0% { transform: translate(-50%, -50%) rotateY(0deg) scale(1); }
+            50% { transform: translate(-50%, -50%) rotateY(90deg) scale(1.1); }
+            100% { transform: translate(-50%, -50%) rotateY(180deg) scale(1); }
+        }
+
+        .ai-thinking {
+            background: linear-gradient(135deg, #e74c3c, #c0392b);
+            color: white;
+            padding: 12px 20px;
+            border-radius: 12px;
+            margin: 15px 0;
+            font-weight: 600;
+            animation: thinking 1.5s ease-in-out infinite;
+        }
+
+        @keyframes thinking {
+            0%, 100% { opacity: 0.7; }
+            50% { opacity: 1; transform: scale(1.02); }
+        }
+
+        .controls {
+            display: flex;
+            gap: 15px;
+            justify-content: center;
+            margin: 20px 0;
+        }
+
+        .btn {
+            background: linear-gradient(135deg, #8f7a66, #9f8977);
+            border: none;
+            color: #f9f6f2;
+            padding: 15px 25px;
+            border-radius: 12px;
+            font-size: 16px;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.2s ease;
+            font-family: inherit;
+            box-shadow: 0 4px 12px rgba(0,0,0,0.15);
+        }
+
+        .btn:hover {
+            transform: translateY(-3px);
+            box-shadow: 0 8px 20px rgba(0,0,0,0.25);
+        }
+
+        .btn.new-game {
+            background: linear-gradient(135deg, #edcf72, #edc850);
+            color: #776e65;
+        }
+
+        .btn.pass {
+            background: linear-gradient(135deg, #f39c12, #e67e22);
+            display: none;
+        }
+
+        .game-message {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: rgba(0, 0, 0, 0.8);
+            display: none;
+            align-items: center;
+            justify-content: center;
+            z-index: 1000;
+        }
+
+        .message-content {
+            background: white;
+            padding: 40px;
+            border-radius: 20px;
+            text-align: center;
+            box-shadow: 0 20px 60px rgba(0,0,0,0.3);
+            max-width: 400px;
+            width: 90%;
+        }
+
+        .message-content h2 {
+            font-size: 36px;
+            margin: 0 0 20px 0;
+            color: #776e65;
+        }
+
+        .message-content p {
+            font-size: 20px;
+            margin-bottom: 30px;
+            color: #8f7a66;
+        }
+
+        .message-content button {
+            background: linear-gradient(135deg, #2c3e50, #34495e);
+            color: white;
+            border: none;
+            padding: 15px 30px;
+            border-radius: 12px;
+            font-size: 18px;
+            font-weight: 600;
+            cursor: pointer;
+            font-family: inherit;
+        }
+
+        /* モバイル対応 */
+        @media (max-width: 520px) {
+            .container {
+                margin: 0 10px;
+            }
+            
+            .heading {
+                font-size: 36px;
+            }
+            
+            .cell {
+                width: 40px;
+                height: 40px;
+            }
+            
+            .stone {
+                width: 32px;
+                height: 32px;
+            }
+            
+            .game-board {
+                padding: 15px;
+            }
+            
+            .board {
+                gap: 2px;
+                padding: 12px;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1 class="heading">AI OTHELLO</h1>
+        <p class="subtitle">超強AI との頭脳戦！勝てるかな？</p>
+
+        <div class="game-info">
+            <div class="info-card">
+                <div class="info-label">あなた (黒)</div>
+                <div class="info-value" id="human-score">2</div>
+            </div>
+            <div class="info-card">
+                <div class="info-label">AI (白)</div>
+                <div class="info-value" id="ai-score">2</div>
+            </div>
+            <div class="info-card">
+                <div class="info-label">勝利数</div>
+                <div class="info-value" id="wins">0</div>
+            </div>
+        </div>
+
+        <div class="current-player" id="current-player">
+            ⚫ あなたの番です
+        </div>
+
+        <div id="ai-thinking" class="ai-thinking" style="display: none;">
+            🤖 AIが思考中... 12手先まで計算しています
+        </div>
+
+        <div class="game-board">
+            <div class="board" id="board">
+                <!-- ボードは動的に生成 -->
+            </div>
+        </div>
+
+        <div class="controls">
+            <button class="btn pass" id="pass-btn" onclick="passMove()">パス</button>
+            <button class="btn new-game" onclick="newGame()">新しいゲーム</button>
+            <button class="btn" onclick="resetStats()">記録リセット</button>
+        </div>
+    </div>
+
+    <!-- ゲーム終了メッセージ -->
+    <div class="game-message" id="game-message">
+        <div class="message-content">
+            <h2 id="message-title">ゲーム終了</h2>
+            <p id="message-text">お疲れさまでした！</p>
+            <button onclick="hideMessage()">続ける</button>
+        </div>
+    </div>
+
+    <script>
+        // 効果音システム
+        const SoundSystem = {
+            context: null,
+            
+            init() {
+                try {
+                    this.context = new (window.AudioContext || window.webkitAudioContext)();
+                } catch (e) {
+                    console.log('Audio not supported');
+                }
+            },
+
+            playTone(frequency, duration, type = 'sine', volume = 0.3) {
+                if (!this.context) return;
+                
+                const oscillator = this.context.createOscillator();
+                const gainNode = this.context.createGain();
+                
+                oscillator.connect(gainNode);
+                gainNode.connect(this.context.destination);
+                
+                oscillator.frequency.setValueAtTime(frequency, this.context.currentTime);
+                oscillator.type = type;
+                
+                gainNode.gain.setValueAtTime(0, this.context.currentTime);
+                gainNode.gain.linearRampToValueAtTime(volume, this.context.currentTime + 0.01);
+                gainNode.gain.exponentialRampToValueAtTime(0.001, this.context.currentTime + duration);
+                
+                oscillator.start(this.context.currentTime);
+                oscillator.stop(this.context.currentTime + duration);
+            },
+
+            place() {
+                this.playTone(800, 0.1, 'sine', 0.25);
+            },
+
+            flip() {
+                this.playTone(600, 0.15, 'triangle', 0.2);
+            },
+
+            win() {
+                this.playTone(523, 0.2, 'sine', 0.4);
+                setTimeout(() => this.playTone(659, 0.2, 'sine', 0.4), 200);
+                setTimeout(() => this.playTone(784, 0.3, 'sine', 0.4), 400);
+            },
+
+            lose() {
+                this.playTone(330, 0.3, 'sine', 0.3);
+                setTimeout(() => this.playTone(294, 0.3, 'sine', 0.3), 150);
+                setTimeout(() => this.playTone(262, 0.5, 'sine', 0.3), 300);
+            },
+
+            thinking() {
+                this.playTone(1000, 0.05, 'square', 0.1);
+            }
+        };
+
+        // ゲーム状態
+        let board = [];
+        let currentPlayer = 1; // 1: 人間(黒), 2: AI(白)
+        let gameActive = true;
+        let wins = parseInt(localStorage.getItem('othelloWins')) || 0;
+
+        const EMPTY = 0;
+        const HUMAN = 1;
+        const AI = 2;
+
+        // 方向定義（8方向）
+        const directions = [
+            [-1, -1], [-1, 0], [-1, 1],
+            [0, -1],           [0, 1],
+            [1, -1],  [1, 0],  [1, 1]
+        ];
+
+        // 評価テーブル（位置の価値）
+        const positionValues = [
+            [100, -20, 10,  5,  5, 10, -20, 100],
+            [-20, -50, -2, -2, -2, -2, -50, -20],
+            [ 10,  -2,  -1, -1, -1, -1,  -2,  10],
+            [  5,  -2,  -1, -1, -1, -1,  -2,   5],
+            [  5,  -2,  -1, -1, -1, -1,  -2,   5],
+            [ 10,  -2,  -1, -1, -1, -1,  -2,  10],
+            [-20, -50, -2, -2, -2, -2, -50, -20],
+            [100, -20, 10,  5,  5, 10, -20, 100]
+        ];
+
+        // 初期化
+        function init() {
+            SoundSystem.init();
+            createBoard();
+            newGame();
+            updateWins();
+        }
+
+        // ボード作成
+        function createBoard() {
+            const boardElement = document.getElementById('board');
+            boardElement.innerHTML = '';
+            board = Array(8).fill().map(() => Array(8).fill(EMPTY));
+            
+            for (let row = 0; row < 8; row++) {
+                for (let col = 0; col < 8; col++) {
+                    const cell = document.createElement('div');
+                    cell.className = 'cell';
+                    cell.dataset.row = row;
+                    cell.dataset.col = col;
+                    cell.addEventListener('click', () => makeMove(row, col));
+                    boardElement.appendChild(cell);
+                }
+            }
+        }
+
+        // 新しいゲーム
+        function newGame() {
+            board = Array(8).fill().map(() => Array(8).fill(EMPTY));
+            currentPlayer = HUMAN;
+            gameActive = true;
+            
+            // 初期配置
+            board[3][3] = AI;
+            board[3][4] = HUMAN;
+            board[4][3] = HUMAN;
+            board[4][4] = AI;
+            
+            updateDisplay();
+            updateCurrentPlayer();
+            document.getElementById('pass-btn').style.display = 'none';
+        }
+
+        // 手を打つ
+        function makeMove(row, col) {
+            if (!gameActive || currentPlayer !== HUMAN) return;
+            if (!isValidMove(row, col, HUMAN)) return;
+            
+            executeMove(row, col, HUMAN);
+            SoundSystem.place();
+            
+            setTimeout(() => {
+                if (gameActive) {
+                    currentPlayer = AI;
+                    updateCurrentPlayer();
+                    aiMove();
+                }
+            }, 800);
+        }
+
+        // 手を実行
+        function executeMove(row, col, player) {
+            board[row][col] = player;
+            const flips = getFlips(row, col, player);
+            
+            // 石を配置
+            addStone(row, col, player);
+            
+            // ひっくり返す
+            setTimeout(() => {
+                flips.forEach(([r, c], index) => {
+                    setTimeout(() => {
+                        board[r][c] = player;
+                        flipStone(r, c, player);
+                        SoundSystem.flip();
+                    }, index * 100);
+                });
+            }, 300);
+            
+            setTimeout(() => {
+                updateDisplay();
+                checkGameEnd();
+            }, 300 + flips.length * 100);
+        }
+
+        // 石を追加
+        function addStone(row, col, player) {
+            const cell = document.querySelector(`[data-row="${row}"][data-col="${col}"]`);
+            const stone = document.createElement('div');
+            stone.className = `stone ${player === HUMAN ? 'black' : 'white'} placing`;
+            cell.appendChild(stone);
+        }
+
+        // 石をひっくり返す
+        function flipStone(row, col, player) {
+            const cell = document.querySelector(`[data-row="${row}"][data-col="${col}"]`);
+            const stone = cell.querySelector('.stone');
+            if (stone) {
+                stone.classList.add('flipping');
+                setTimeout(() => {
+                    stone.className = `stone ${player === HUMAN ? 'black' : 'white'}`;
+                }, 300);
+            }
+        }
+
+        // 有効手判定
+        function isValidMove(row, col, player) {
+            if (board[row][col] !== EMPTY) return false;
+            return getFlips(row, col, player).length > 0;
+        }
+
+        // ひっくり返る石を取得
+        function getFlips(row, col, player) {
+            const flips = [];
+            const opponent = 3 - player;
+            
+            for (const [dr, dc] of directions) {
+                const lineFlips = [];
+                let r = row + dr;
+                let c = col + dc;
+                
+                // 相手の石を連続して発見
+                while (r >= 0 && r < 8 && c >= 0 && c < 8 && board[r][c] === opponent) {
+                    lineFlips.push([r, c]);
+                    r += dr;
+                    c += dc;
+                }
+                
+                // 自分の石で挟めるかチェック
+                if (r >= 0 && r < 8 && c >= 0 && c < 8 && board[r][c] === player && lineFlips.length > 0) {
+                    flips.push(...lineFlips);
+                }
+            }
+            
+            return flips;
+        }
+
+        // 有効手を取得
+        function getValidMoves(player) {
+            const moves = [];
+            for (let row = 0; row < 8; row++) {
+                for (let col = 0; col < 8; col++) {
+                    if (isValidMove(row, col, player)) {
+                        moves.push([row, col]);
+                    }
+                }
+            }
+            return moves;
+        }
+
+        // AI の手
+        function aiMove() {
+            document.getElementById('ai-thinking').style.display = 'block';
+            
+            // 思考時間演出
+            let thinkingTime = 1000 + Math.random() * 1500;
+            
+            setTimeout(() => {
+                const validMoves = getValidMoves(AI);
+                
+                if (validMoves.length === 0) {
+                    // AIパス
+                    document.getElementById('ai-thinking').style.display = 'none';
+                    currentPlayer = HUMAN;
+                    updateCurrentPlayer();
+                    
+                    if (getValidMoves(HUMAN).length === 0) {
+                        endGame();
+                    }
+                    return;
+                }
+                
+                // 超強AI: ミニマックス法で最適手を選択
+                const bestMove = getBestMove();
+                executeMove(bestMove[0], bestMove[1], AI);
+                SoundSystem.place();
+                
+                document.getElementById('ai-thinking').style.display = 'none';
+                
+                setTimeout(() => {
+                    if (gameActive) {
+                        currentPlayer = HUMAN;
+                        updateCurrentPlayer();
+                    }
+                }, 800);
+            }, thinkingTime);
+        }
+
+        // 超強AI: 最適手を取得
+        function getBestMove() {
+            const depth = 8; // 8手先まで読む
+            let bestScore = -Infinity;
+            let bestMove = null;
+            
+            const validMoves = getValidMoves(AI);
+            
+            for (const [row, col] of validMoves) {
+                const boardCopy = copyBoard();
+                const flips = getFlips(row, col, AI);
+                
+                // 手を試す
+                boardCopy[row][col] = AI;
+                flips.forEach(([r, c]) => boardCopy[r][c] = AI);
+                
+                const score = minimax(boardCopy, depth - 1, -Infinity, Infinity, false);
+                
+                if (score > bestScore) {
+                    bestScore = score;
+                    bestMove = [row, col];
+                }
+            }
+            
+            return bestMove || validMoves[0];
+        }
+
+        // ミニマックス法（アルファベータ剪定付き）
+        function minimax(boardState, depth, alpha, beta, isMaximizing) {
+            if (depth === 0) {
+                return evaluateBoard(boardState);
+            }
+            
+            const player = isMaximizing ? AI : HUMAN;
+            const validMoves = getValidMovesForBoard(boardState, player);
+            
+            if (validMoves.length === 0) {
+                const opponent = 3 - player;
+                const opponentMoves = getValidMovesForBoard(boardState, opponent);
+                if (opponentMoves.length === 0) {
+                    return evaluateFinalBoard(boardState);
+                }
+                return minimax(boardState, depth - 1, alpha, beta, !isMaximizing);
+            }
+            
+            if (isMaximizing) {
+                let maxEval = -Infinity;
+                for (const [row, col] of validMoves) {
+                    const newBoard = copyBoard(boardState);
+                    const flips = getFlipsForBoard(newBoard, row, col, player);
+                    newBoard[row][col] = player;
+                    flips.forEach(([r, c]) => newBoard[r][c] = player);
+                    
+                    const eval = minimax(newBoard, depth - 1, alpha, beta, false);
+                    maxEval = Math.max(maxEval, eval);
+                    alpha = Math.max(alpha, eval);
+                    
+                    if (beta <= alpha) break; // アルファベータ剪定
+                }
+                return maxEval;
+            } else {
+                let minEval = Infinity;
+                for (const [row, col] of validMoves) {
+                    const newBoard = copyBoard(boardState);
+                    const flips = getFlipsForBoard(newBoard, row, col, player);
+                    newBoard[row][col] = player;
+                    flips.forEach(([r, c]) => newBoard[r][c] = player);
+                    
+                    const eval = minimax(newBoard, depth - 1, alpha, beta, true);
+                    minEval = Math.min(minEval, eval);
+                    beta = Math.min(beta, eval);
+                    
+                    if (beta <= alpha) break; // アルファベータ剪定
+                }
+                return minEval;
+            }
+        }
+
+        // ボード評価関数
+        function evaluateBoard(boardState) {
+            let score = 0;
+            let aiStones = 0;
+            let humanStones = 0;
+            
+            for (let row = 0; row < 8; row++) {
+                for (let col = 0; col < 8; col++) {
+                    if (boardState[row][col] === AI) {
+                        score += positionValues[row][col];
+                        aiStones++;
+                    } else if (boardState[row][col] === HUMAN) {
+                        score -= positionValues[row][col];
+                        humanStones++;
+                    }
+                }
+            }
+            
+            // 機動力評価
+            const aiMoves = getValidMovesForBoard(boardState, AI).length;
+            const humanMoves = getValidMovesForBoard(boardState, HUMAN).length;
+            score += (aiMoves - humanMoves) * 10;
+            
+            return score;
+        }
+
+        // 最終ボード評価
+        function evaluateFinalBoard(boardState) {
+            let aiStones = 0;
+            let humanStones = 0;
+            
+            for (let row = 0; row < 8; row++) {
+                for (let col = 0; col < 8; col++) {
+                    if (boardState[row][col] === AI) aiStones++;
+                    else if (boardState[row][col] === HUMAN) humanStones++;
+                }
+            }
+            
+            if (aiStones > humanStones) return 1000;
+            if (humanStones > aiStones) return -1000;
+            return 0;
+        }
+
+        // ボードコピー
+        function copyBoard(boardState = board) {
+            return boardState.map(row => [...row]);
+        }
+
+        // 特定ボードでの有効手取得
+        function getValidMovesForBoard(boardState, player) {
+            const moves = [];
+            for (let row = 0; row < 8; row++) {
+                for (let col = 0; col < 8; col++) {
+                    if (boardState[row][col] === EMPTY && getFlipsForBoard(boardState, row, col, player).length > 0) {
+                        moves.push([row, col]);
+                    }
+                }
+            }
+            return moves;
+        }
+
+        // 特定ボードでのひっくり返る石取得
+        function getFlipsForBoard(boardState, row, col, player) {
+            const flips = [];
+            const opponent = 3 - player;
+            
+            for (const [dr, dc] of directions) {
+                const lineFlips = [];
+                let r = row + dr;
+                let c = col + dc;
+                
+                while (r >= 0 && r < 8 && c >= 0 && c < 8 && boardState[r][c] === opponent) {
+                    lineFlips.push([r, c]);
+                    r += dr;
+                    c += dc;
+                }
+                
+                if (r >= 0 && r < 8 && c >= 0 && c < 8 && boardState[r][c] === player && lineFlips.length > 0) {
+                    flips.push(...lineFlips);
+                }
+            }
+            
+            return flips;
+        }
+
+        // パス
+        function passMove() {
+            if (!gameActive || currentPlayer !== HUMAN) return;
+            
+            currentPlayer = AI;
+            updateCurrentPlayer();
+            aiMove();
+        }
+
+        // ゲーム終了チェック
+        function checkGameEnd() {
+            const humanMoves = getValidMoves(HUMAN);
+            const aiMoves = getValidMoves(AI);
+            
+            if (humanMoves.length === 0 && aiMoves.length === 0) {
+                endGame();
+                return;
+            }
+            
+            if (humanMoves.length === 0) {
+                document.getElementById('pass-btn').style.display = 'inline-block';
+            } else {
+                document.getElementById('pass-btn').style.display = 'none';
+            }
+        }
+
+        // ゲーム終了
+        function endGame() {
+            gameActive = false;
+            
+            let humanStones = 0;
+            let aiStones = 0;
+            
+            for (let row = 0; row < 8; row++) {
+                for (let col = 0; col < 8; col++) {
+                    if (board[row][col] === HUMAN) humanStones++;
+                    else if (board[row][col] === AI) aiStones++;
+                }
+            }
+            
+            let title, text;
+            if (humanStones > aiStones) {
+                title = '🎉 信じられない！あなたの勝利！';
+                text = `${humanStones} vs ${aiStones} であなたの勝ち！\n超強AIに勝つなんて...天才です！`;
+                wins++;
+                localStorage.setItem('othelloWins', wins);
+                SoundSystem.win();
+            } else if (aiStones > humanStones) {
+                title = '🤖 AIの勝利';
+                text = `${aiStones} vs ${humanStones} でAIの勝ち\n12手先まで計算されました...`;
+                SoundSystem.lose();
+            } else {
+                title = '😐 引き分け';
+                text = `${humanStones} vs ${aiStones} で引き分け\n素晴らしい勝負でした！`;
+            }
+            
+            updateWins();
+            setTimeout(() => showMessage(title, text), 1000);
+        }
+
+        // 表示更新
+        function updateDisplay() {
+            // ボードクリア
+            document.querySelectorAll('.cell').forEach(cell => {
+                cell.innerHTML = '';
+                cell.classList.remove('valid-move');
+            });
+            
+            // 石を配置
+            for (let row = 0; row < 8; row++) {
+                for (let col = 0; col < 8; col++) {
+                    const cell = document.querySelector(`[data-row="${row}"][data-col="${col}"]`);
+                    if (board[row][col] !== EMPTY) {
+                        const stone = document.createElement('div');
+                        stone.className = `stone ${board[row][col] === HUMAN ? 'black' : 'white'}`;
+                        cell.appendChild(stone);
+                    }
+                }
+            }
+            
+            // 有効手をハイライト
+            if (currentPlayer === HUMAN && gameActive) {
+                const validMoves = getValidMoves(HUMAN);
+                validMoves.forEach(([row, col]) => {
+                    const cell = document.querySelector(`[data-row="${row}"][data-col="${col}"]`);
+                    cell.classList.add('valid-move');
+                });
+            }
+            
+            // スコア更新
+            let humanStones = 0;
+            let aiStones = 0;
+            for (let row = 0; row < 8; row++) {
+                for (let col = 0; col < 8; col++) {
+                    if (board[row][col] === HUMAN) humanStones++;
+                    else if (board[row][col] === AI) aiStones++;
+                }
+            }
+            
+            document.getElementById('human-score').textContent = humanStones;
+            document.getElementById('ai-score').textContent = aiStones;
+        }
+
+        // 現在のプレイヤー表示更新
+        function updateCurrentPlayer() {
+            const element = document.getElementById('current-player');
+            if (currentPlayer === HUMAN) {
+                element.textContent = '⚫ あなたの番です';
+                element.className = 'current-player';
+            } else {
+                element.textContent = '⚪ AIの番です';
+                element.className = 'current-player ai-turn';
+            }
+        }
+
+        // 勝利数更新
+        function updateWins() {
+            document.getElementById('wins').textContent = wins;
+        }
+
+        // 統計リセット
+        function resetStats() {
+            if (confirm('勝利記録をリセットしますか？')) {
+                wins = 0;
+                localStorage.removeItem('othelloWins');
+                updateWins();
+            }
+        }
+
+        // メッセージ表示
+        function showMessage(title, text) {
+            document.getElementById('message-title').textContent = title;
+            document.getElementById('message-text').textContent = text;
+            document.getElementById('game-message').style.display = 'flex';
+        }
+
+        // メッセージ非表示
+        function hideMessage() {
+            document.getElementById('game-message').style.display = 'none';
+        }
+
+        // タッチ対応
+        document.addEventListener('touchstart', function() {
+            if (SoundSystem.context && SoundSystem.context.state === 'suspended') {
+                SoundSystem.context.resume();
+            }
+        }, { once: true });
+
+        // ゲーム開始
+        init();
+    </script>
+</body>
+</html>
